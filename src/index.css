@@ -1,0 +1,59 @@
+/* Add Tailwind CSS base styles */
+@tailwind base;
+
+/* Add Tailwind CSS component styles */
+@tailwind components;
+
+/* Add Tailwind CSS utility styles */
+@tailwind utilities;
+
+@layer base {
+    html {
+      @apply scroll-smooth overflow-y-scroll;
+    }
+  
+    body {
+      @apply font-sans;
+      font-family: "Lato", sans-serif;
+      font-weight: 400;
+      font-style: normal;
+    }
+  
+    /* ===== Custom Scrollbar ===== */
+    /* width */
+    ::-webkit-scrollbar {
+      @apply w-1;
+    }
+  
+    /* Track */
+    ::-webkit-scrollbar-track {
+      @apply bg-gray-300 ;
+    }
+  
+    /* Handle */
+    ::-webkit-scrollbar-thumb {
+      @apply bg-[#d5d5d5] ;
+    }
+  
+    /* Handle on hover */
+    ::-webkit-scrollbar-thumb:hover {
+      @apply bg-[#b7b7b7] dark:bg-[#17222b];
+    }
+
+    .ripple {
+        position: absolute;
+        border-radius: 50%;
+        background: rgba(241, 236, 236, 0.2); /* Adjust color and transparency */
+        transform: scale(0);
+        animation: ripple 0.7s ease-in-out;
+        pointer-events: none;
+      }
+      
+      @keyframes ripple {
+        to {
+          transform: scale(4);
+          opacity: 0;
+        }
+      }
+      
+  }
