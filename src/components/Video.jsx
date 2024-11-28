@@ -33,7 +33,7 @@ const Video = () => {
                 
                 <iframe 
                     className="text-white w-full h-full" 
-                    src={'http://' + import.meta.env.VITE_VIDEO_URL   + '/stream.mjpg'} alt="streaming..." 
+                    src={'http://' + import.meta.env.VITE_VIDEO_URL + '/stream.mjpg'} alt="streaming..." 
                     allowFullScreen
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
 
