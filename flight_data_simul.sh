@@ -89,6 +89,6 @@ EOF
     mosquitto_pub -h "$BROKER_HOST" -p "$BROKER_PORT" -t "$TOPIC" -m "$json_message"
 
     # Sleep for a period to simulate real-time data
-    sleep 0.git 1  # Change this value for higher or lower frequency
+    sleep 0.001  # Change this value for higher or lower frequency
 done
 

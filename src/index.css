@@ -32,7 +32,7 @@
   
     /* Handle */
     ::-webkit-scrollbar-thumb {
-      @apply bg-[#d5d5d5] ;
+      @apply bg-[#161313] ;
     }
   
     /* Handle on hover */
