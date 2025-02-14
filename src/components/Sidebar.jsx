@@ -70,6 +70,17 @@ function Sidebar(props) {
   }, [props.pressure, throttledSetPressure]);
 
   useEffect(() => {
+    throttledSetPyroMain(props.pyroMain);
+    return throttledSetPyroMain.cancel();
+  }, [props.pyroMain, throttledSetPyroMain]);
+
+  useEffect(() => {
+    throttledSetPyroDrogue(props.pyroDrogue);
+    return throttledSetPyroDrogue.cancel();
+  }, [props.pyroDrogue, throttledSetPyroDrogue]);
+
+
+  useEffect(() => {
     throttledSetTemperature(props.temperature);
     return throttledSetTemperature.cancel();
   }, [props.temperature, throttledSetTemperature]);
@@ -130,7 +141,7 @@ function Sidebar(props) {
               }`}
             >
               <div className="border-r-2 border-gray-800">
-                {isArmed ? "Armed" : "SAFE"}
+                {isArmed ? "ARMED" : "SAFE"}
               </div>
               <div>
                 <Button
@@ -166,20 +177,54 @@ function Sidebar(props) {
             <div className="text-base pt-1 h-1/2 uppercase">{antenna}</div>
           </div>
 
-          <div className="min-h-24 h-32 w-full p-2 rounded-2xl flex flex-col items-center justify-center font-semibold transition duration-300 ease-in-out border-2 border-gray-700 relative">
-            <div className="text-base -mt-11 bg-white px-1 z-10 relative h-1/5">
+          <div className="min-h-14 h-14 w-full p-2 rounded-2xl flex flex-col items-center justify-center font-semibold transition duration-300 ease-in-out border-2 border-gray-700 relative ">
+            <div className="text-base -mt-5 bg-white px-1 z-10 relative h-full">
               RSSI
             </div>
-            <div className="  text-base grid grid-cols-2 items-center justify-center pt-2 h-4/5 w-full text-gray-800">
-              <div className="px-1 border-r-2 border-gray-800 grid grid-rows-3 items-center justify-center h-full w-full">
-                <div className=" h-1/3 w-full text-center">Rx</div>
-                <div className="border-2 w-full border-gray-800" />
-                <div className=" h-1/3"> 60 dBm</div>
-              </div>
+            <div className="  text-base grid grid-cols-1 items-center justify-center -mt-2 h-full w-full text-gray-800">
               <div className="px-1 grid grid-rows-3 items-center justify-center h-full w-full">
-                <div className=" h-1/3 w-full text-center">Tx</div>
-                <div className="border-2 w-full border-gray-800" />
                 <div className=" h-1/3 "> 60 dBm</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Chute status section */}
+          <div className="min-h-16 w-full p-2 rounded-2xl flex flex-col items-center justify-center font-semibold transition duration-300 ease-in-out border-2 border-gray-800 relative">
+            <div
+              className="text-base h-2/3 w-full pt-1 uppercase items-center text-center grid grid-cols-2 border-b-2 border-gray-800 pb-1"
+            >
+              <div className="border-r-2 border-gray-800">
+                MAIN
+              </div>
+              <div className="flex items-center justify-center">
+                <div
+                  className={`text-center items-center justify-center pt-1.5 pl-1 shadow-md border-2 border-box font-bold w-16 h-8 text-xs uppercase ${
+                    !pyroMain
+                      ? "bg-gray-500  text-gray-100"
+                      : "bg-emerald-500  text-gray-100 w-20"
+                  }`}
+                >
+                  {pyroMain ? "Deployed" : "Ready"}
+                </div>
+              </div>
+            </div>
+            <div
+              className="text-base h-2/3 w-full pt-1 uppercase items-center text-center grid grid-cols-2"
+            >
+              <div className="border-r-2 border-gray-800">
+                Drogue
+              </div>
+              <div className="flex items-center justify-center">
+                <div
+                  className={` pt-1.5 pl-1 pr-1 shadow-md border-2 border-box font-bold w-16 h-8 text-xs uppercase ${
+                    !pyroDrogue
+                      ? "bg-gray-500  text-gray-100"
+                      : "bg-emerald-500  text-gray-100 w-20"
+                  }`}
+                >
+                  {pyroDrogue ? "Deployed" : "Ready"}
+                </div>
+                
               </div>
             </div>
           </div>
@@ -187,34 +232,6 @@ function Sidebar(props) {
           {/* Logs Section */}
           <LogNotification logs={props.armingLogs} />
 
-          <div className="border border-gray-800" />
-
-          <div className="uppercase flex flex-col w-full space-y-2 font-semibold text-blue-900 text-sm lg:text-base ">
-            {/* <div className="flex flex-row items-center justify-center min-h-14 shadow-md bg-blue-100  p-2 w-full ">
-              <div className='w-1/2 flex items-center justify-end p-2'>Drouge</div>
-              <div className='w-1/2 flex items-center justify-center p-2'> {pyroDrogue ? "Deployed": "Safe"} </div>
-            </div>
-            <div className="flex items-center justify-center min-h-14 shadow-md bg-blue-100  p-2 w-full ">
-              <div className='w-1/2 flex items-center justify-end p-2'>Main</div>
-              <div className='w-1/2 flex items-center justify-center p-2'> {pyroMain ? "Deployed": "Safe"} </div>
-            </div> */}
-            <div className="flex items-center justify-center min-h-14 bg-blue-100  p-2  w-full">
-              <div className="w-1/2 flex items-center justify-end">
-                Pressure
-              </div>
-              <div className="w-1/2 flex items-center justify-center  p-2">
-                {pressure}
-              </div>
-            </div>
-            <div className="flex items-center justify-center min-h-14 shadow-md bg-blue-100  p-2 w-full">
-              <div className="w-1/2 flex items-center justify-end p-2 text-wrap overflow-x-auto">
-                Temperature
-              </div>
-              <div className="w-1/2 flex items-center justify-center p-2">
-                {temperature}
-              </div>
-            </div>
-          </div>
 
           <div>
             <div className="border-b-2"></div>

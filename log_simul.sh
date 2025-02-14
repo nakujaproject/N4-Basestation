@@ -39,5 +39,5 @@ while true; do
     mosquitto_pub -h "$BROKER_HOST" -p "$BROKER_PORT" -t "$TOPIC" -m "$PAYLOAD"
 
     # Wait for a random interval between 1-5 seconds
-    sleep 1
+    sleep 0.05
 done
