@@ -2,6 +2,8 @@
 
 For monitoring telemetry and remote rocket setup.
 
+---
+
 ## 1. Prerequisites
 
 - **Required Tools**:
@@ -10,6 +12,9 @@ For monitoring telemetry and remote rocket setup.
   - npm 
   - Docker
   - Mosquitto
+  - Python 3.x
+
+---
 
 ## 2. Initial Setup
 
@@ -23,115 +28,166 @@ cd n4-basestation
 git checkout -b <branch-name>
 ```
 
-### Install Dependencies
+### Install Frontend Dependencies
 ```bash
-# Install project dependencies
+# Install project dependencies for the React frontend
 npm install
 ```
+
+### Backend Setup
+
+The backend is built using Python and Flask to handle serial communications and provide API endpoints. It works with the ESP Now configuration to receive the data through a serial port directly from the ESP then send this data via http to the frontend.
+
+#### Create a Python Virtual Environment (Optional but Recommended)
+```bash
+python -m venv venv
+# Activate the virtual environment:
+# On macOS/Linux:
+source venv/bin/activate
+# On Windows:
+venv\Scripts\activate
+```
+
+#### Install Python Dependencies
+```bash
+pip install flask flask-cors pyserial
+```
+
+#### Run the Backend Server
+```bash
+python server.py
+```
+This will start the Flask backend on [http://localhost:5000](http://localhost:5000).  
+You can verify it by visiting [http://localhost:5000/debug](http://localhost:5000/debug).
+
+---
 
 ## 3. Docker Configuration
 
 Install [Docker](https://www.docker.com/) on your computer.
 
-1. If you are using Windows, please follow [steps for installing Docker Desktop on Windows.](https://docs.docker.com/desktop/install/windows-install/)
+1. **Windows**: Follow [Docker Desktop for Windows installation](https://docs.docker.com/desktop/install/windows-install/).
+2. **macOS**: Follow [Docker Desktop for Mac installation](https://docs.docker.com/desktop/install/mac-install/).
+3. **Linux**: Follow the instructions for [Docker Engine](https://docs.docker.com/engine/install/ubuntu/) and [Docker Desktop for Linux](https://docs.docker.com/desktop/install/linux-install/).
 
-2. If you are using macOS, please be sure to follow the steps outlined in [Docker Docs for how to install Docker Desktop for Mac](https://docs.docker.com/desktop/install/mac-install/)
+### Docker Post-Install for Linux
 
-3. If you are using Linux, please be sure to follow the steps outlined in Docker Docs for how to install [Docker Engine](https://docs.docker.com/engine/install/ubuntu/) and [Docker Desktop for linux](https://docs.docker.com/desktop/install/linux-install/)
-
-## Docker post-install for linux
-
-1. Create a docker group
-
+1. **Create a Docker group**
     ```bash
-        #!/bin/bash
     sudo groupadd docker
     ```
 
-2. Add your user to the `docker` group.
-
+2. **Add your user to the `docker` group**
     ```bash
-        #!/bin/bash
     sudo usermod -aG docker $USER
     ```
 
-3. Log out and log back in so that your group membership is re-evaluated.
+3. **Log out and log back in** so that your group membership is re-evaluated.
 
-4. Verify that you can run `docker` commands without `sudo`.
+4. **Verify** that you can run `docker` commands without `sudo`.
 
-5. For more information follow this [link](https://docs.docker.com/engine/install/linux-postinstall/)
+5. For more details, see the [Docker post-installation steps](https://docs.docker.com/engine/install/linux-postinstall/).
 
-Then install TileServer-GL in order to serve the map.
-```bash
-docker pull maptiler/tileserver-gl
-```
-Now download the vector tiles in form of MBTiles file from the OpenMapTiles Downloads and save it in your current directory.
-Go to [Kenya's](https://data.maptiler.com/downloads/tileset/osm/africa/kenya/) map to get the relevant mbtiles file.
+---
 
-Example using a mbtiles file
-```bash
-docker run --rm -it -v $(pwd):/data -p 8080:8080 maptiler/tileserver-gl --file osm-2020-02-10-v3.11_africa_kenya.mbtiles
-[in your browser, visit http://[server ip]:8080]
-```
+## 4. Map Server Setup with TileServer-GL
 
-## 4. Environment Configuration
+TileServer-GL is used to serve the map.
 
-### Create `.env` or `.env.local` File
+1. **Pull the TileServer-GL Docker image:**
+    ```bash
+    docker pull maptiler/tileserver-gl
+    ```
+
+2. **Download the vector tiles (MBTiles file):**  
+   Visit [Kenya's MapTiler page](https://data.maptiler.com/downloads/tileset/osm/africa/kenya/) and download the relevant MBTiles file.
+
+3. **Run the TileServer-GL container:**  
+    Replace `osm-2020-02-10-v3.11_africa_kenya.mbtiles` with your downloaded file name.
+    ```bash
+    docker run --rm -it -v $(pwd):/data -p 8080:8080 maptiler/tileserver-gl --file osm-2020-02-10-v3.11_africa_kenya.mbtiles
+    ```
+    In your browser, visit [http://localhost:8080](http://localhost:8080) (or your server IP if running remotely).
+
+---
+
+## 5. Environment Configuration
+
+### Create a `.env` or `.env.local` File
+Place this file in the root directory of the project.
+
 ```env
-
 # MQTT Configuration
 VITE_MQTT_HOST="localhost"
 VITE_WS_PORT=1783
 
 # Video Configuration
-VITE_VIDEO_URL = "192.168.X.X:XXXX"
+VITE_VIDEO_URL="192.168.X.X:XXXX"
+
+
 ```
 
-## 5. Running the Project
+---
 
-```bash
-# Run vite development server
-npm run dev
+## 6. Running the Project
 
-# Start Docker if not started
-docker run --rm -it -v $(pwd):/data -p 8080:8080 maptiler/tileserver-gl --file osm-2020-02-10-v3.11_africa_kenya.mbtiles
+In separate terminal windows (or tabs), run the following services:
 
-# Start Mosquitto service
-mosquitto -c mosquitto.conf
+1. **Run the Backend Server**
+    ```bash
+    python server.py
+    ```
+    - Flask backend will run at [http://localhost:5000](http://localhost:5000).
 
-# Access Services
-# React App: http://localhost:5173
-# MapTiler: http://localhost:8080
-```
+2. **Run the Frontend (React) Application**
+    ```bash
+    npm run dev
+    ```
+    - The Vite development server typically runs at [http://localhost:5173](http://localhost:5173).
 
-## 6. Troubleshooting
+3. **Start the TileServer-GL Docker Container (Map Server)**
+    ```bash
+    docker run --rm -it -v $(pwd):/data -p 8080:8080 maptiler/tileserver-gl --file osm-2020-02-10-v3.11_africa_kenya.mbtiles
+    ```
+    - Access the map at [http://localhost:8080](http://localhost:8080).
+
+4. **Start Mosquitto (MQTT Broker)**
+    ```bash
+    mosquitto -c mosquitto.conf
+    ```
+
+---
+
+## 7. Troubleshooting
 
 ### Common Issues
-- Verify Docker services are running
-- Check environment configurations
-- Ensure network ports are available
-- Confirm Node.js versions
+- Verify that all required services (Docker, Mosquitto, backend, and frontend) are running.
+- Ensure environment configurations in the `.env` file are correct.
+- Check that network ports are available and not blocked by a firewall.
+- Confirm you are using compatible versions of Node.js and Python.
 
 ### Debugging Commands
 ```bash
 # Resolve npm install dependency conflicts
 npm install --force
 
-# If map is not rendering restart docker 
+# If the map is not rendering, try restarting Docker.
 ```
+
+---
 
 # MQTT Configuration
 
 ## Overview
-MQTT topic structure, data formats, and configuration details used. The system uses MQTT for bi-directional communication between the flight computer and ground station.
+The system uses MQTT for bi-directional communication between the flight computer and the ground station.
 
 ## Environment Configuration
-Create a `.env` file in the root directory with the following variables:
+Ensure your `.env` file includes the following variables:
 
 ```env
 # MQTT Configuration
-VITE_MQTT_HOST=localhost    # WebSocket URL for MQTT broker
-VITE_WS_PORT=1783                          # WebSocket port for MQTT
+VITE_MQTT_HOST=localhost    # WebSocket URL for the MQTT broker
+VITE_WS_PORT=1783           # WebSocket port for MQTT
 
 # API Configuration
 VITE_STREAM_URL=http://ip-addr:port    # Video stream server URL
@@ -139,33 +195,32 @@ VITE_STREAM_URL=http://ip-addr:port    # Video stream server URL
 
 ## Port Configuration
 
-| Service | Specified Port | Description |
-|---------|-------------|-------------|
-| MQTT WebSocket | 1783 | MQTT broker WebSocket port for dashboard communication |
-| MQTT TCP | 1882 | MQTT broker TCP port for wifi device connections |
-| Video Stream | XXXX | RTSP stream server port |
-| Dashboard | 5173 | Development server port (when running `npm run dev`) |
-| Dashboard | 80 | Production server port (when running built version) |
+| Service          | Specified Port | Description                                                           |
+|------------------|----------------|-----------------------------------------------------------------------|
+| MQTT WebSocket   | 1783           | MQTT broker WebSocket port for dashboard communication                |
+| MQTT TCP         | 1882           | MQTT broker TCP port for Wi-Fi device connections                     |
+| Video Stream     | XXXX           | RTSP stream server port                                               |
+| Dashboard        | 5173           | Development server port (when running `npm run dev`)                  |
+| Dashboard        | 80             | Production server port (when running the built version)               |
+| Flask Server     | 5000           | Backend server port                                                   |
 
 ## MQTT Connection Configuration
-- Protocol: MQTT over WebSocket
-- Default Port: Define in environment variable `VITE_WS_PORT`
-- Host: Define in environment variable `VITE_MQTT_HOST`
-- Client ID Format: `dashboard-[random-hex]`
-- Keep Alive Interval: 3600 seconds
+- **Protocol:** MQTT over WebSocket
+- **Default Port:** Use the `VITE_WS_PORT` environment variable
+- **Host:** Use the `VITE_MQTT_HOST` environment variable
+- **Client ID Format:** `dashboard-[random-hex]`
+- **Keep Alive Interval:** 3600 seconds
 
 ## Topics Structure
 
 ### Subscribe Topics
 The dashboard subscribes to the following topics:
-
 1. `n4/telemetry` - Main telemetry data from the flight computer
-2. `n4/logs` - System logs and status messages. 
+2. `n4/logs` - System logs and status messages
 
 ### Publish Topics
 The dashboard publishes to:
-
-1. `n4/commands` - Control commands to the flight computer. To arm or disarm.
+1. `n4/commands` - Control commands to the flight computer (e.g., arm/disarm)
 
 ## Data Formats
 
@@ -201,9 +256,9 @@ The dashboard publishes to:
 ### Log Messages (`n4/logs`)
 ```json
 {
-  "level": string,     // "INFO", "ERROR", "WARN", "DEBUG".
+  "level": string,     // "INFO", "ERROR", "WARN", "DEBUG"
   "message": string,   // Log message content
-  "source": string     // "Flight Computer" or "Base Station" or other source identifier
+  "source": string     // "Flight Computer", "Base Station", or another identifier
 }
 ```
 
@@ -216,30 +271,28 @@ The dashboard publishes to:
 
 ## Flight States
 The system recognizes the following flight states:
-- 0: Pre-Flight
-- 1: Powered Flight
-- 2: Apogee
-- 3: Drogue Deployed
-- 4: Main Deployed
-- 5: Rocket Descent
-- 6: Post Flight
+- **0:** Pre-Flight
+- **1:** Powered Flight
+- **2:** Apogee
+- **3:** Drogue Deployed
+- **4:** Main Deployed
+- **5:** Rocket Descent
+- **6:** Post Flight
 
 ## Connection Status Monitoring
-- Base station connection status is monitored continuously
-- Flight computer data staleness is checked every 500ms
-- Connection is marked as "No Recent Data" if no telemetry is received for > 5 seconds
+- Base station connection status is monitored continuously.
+- Flight computer data staleness is checked every 500ms.
+- Connection is marked as "No Recent Data" if no telemetry is received for > 5 seconds.
 
 ## Video Stream Configuration
-- The dashboard expects an RTSP stream to be available at the URL specified in `VITE_STREAM_URL`
-- The video component will automatically attempt to connect to this stream
-- Ensure the RTSP server is properly configured and accessible from the dashboard's network
-
+- The dashboard expects an RTSP stream at the URL specified by `VITE_STREAM_URL`.
+- Ensure the RTSP server is properly configured and accessible from the dashboard's network.
 
 ## Error Handling
-1. Connection failures are logged with timestamps
-2. Parsing errors for incoming messages are captured and reported
-3. Command transmission failures are logged and reported to the user
-4. Data staleness is monitored and reported in the UI
+1. Connection failures are logged with timestamps.
+2. Parsing errors for incoming messages are captured and reported.
+3. Command transmission failures are logged and reported to the user.
+4. Data staleness is monitored and reflected in the UI.
 
 ## Implementation Example
 
@@ -269,4 +322,4 @@ message.destinationName = "n4/commands";
 client.send(message);
 ```
 
-
+---
