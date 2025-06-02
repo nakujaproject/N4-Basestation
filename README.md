@@ -21,7 +21,7 @@ For monitoring telemetry and remote rocket setup.
 ### Clone Repository
 ```bash
 # Clone your project repository
-git clone http://nakujaproject/n4-basestation
+git clone https://nakujaproject/n4-basestation
 cd n4-basestation
 
 # Switch to specific branch if needed
