@@ -46,7 +46,8 @@ function Map({ position }) {
     >
       <TileLayer
         attribution='&copy; <a href=\"https://www.maptiler.com/copyright/\" target=\"_blank\">&copy; MapTiler</a> <a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\">&copy; OpenStreetMap contributors</a> contributors'
-        url="http://[::]:8080/styles/basic-preview/{z}/{x}/{y}.png"
+        // url="http://[::]:8080/styles/basic-preview/{z}/{x}/{y}.png"
+        url="/tiles/styles/basic-preview/{z}/{x}/{y}.png"
       />
       <Circle center={position} pathOptions={{ fillColor: "blue" }} radius={20}>
         <Marker position={position}>

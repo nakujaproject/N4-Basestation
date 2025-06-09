@@ -53,10 +53,13 @@ function App() {
 
     // Toggle arming state
     const newArmedState = !telemetry.operationMode;
+    // const message = new MQTT.Message(
+    //   JSON.stringify({
+    //     command: newArmedState ? "ARM" : "DISARM",
+    //   })
+    // );
     const message = new MQTT.Message(
-      JSON.stringify({
-        command: newArmedState ? "ARM" : "DISARM",
-      })
+      newArmedState ? "ARM" : "DISARM",
     );
     message.destinationName = "n4/commands";
 
@@ -106,7 +109,8 @@ function App() {
 
     const onConnect = () => {
       console.log("Connected to MQTT Broker");
-      client.subscribe(["n4/telemetry", "n4/logs"]);
+      // client.subscribe(["n4/telemetry", "n4/logs"]);
+      client.subscribe(["n4/flight-computer-1", "n4/logs"]);
 
       // Update connection status
       setConnectionStatus((prev) => ({
@@ -156,7 +160,8 @@ function App() {
 
     const onConnect = () => {
       console.log("Connected to MQTT Broker");
-      client.subscribe(["n4/telemetry", "n4/logs"]);
+      // client.subscribe(["n4/telemetry", "n4/logs"]);
+      client.subscribe(["n4/flight-computer-1", "n4/logs"]);
       // client.subscribe("n4/logs");
 
       // Update connection status
@@ -233,6 +238,8 @@ function App() {
 
   // Message arrived handler
   let onMessageArrived = (message) => {
+    const payload = message.payloadString;
+
     try {
       const receivedData = JSON.parse(message.payloadString);
 
@@ -283,8 +290,67 @@ function App() {
         console.error("Error updating charts", err);
       }
 
-    } catch (error) {
+    } catch (jsonError) {
       setError("Error parsing message");
+      // If JSON parsing fails, try parsing CSV
+    try {
+      const values = payload.trim().split(',').map(Number);
+
+      // Map the CSV to a mock structure similar to JSON
+      const receivedData = {
+        operation_mode: values[1],
+        state: values[2],
+        acc_data: {
+          ax: values[3],
+          ay: values[4],
+          az: values[5],
+          pitch: values[6],
+          roll: values[7],
+        },
+        gps_data: {
+          latitude: values[11],
+          longitude: values[12],
+          gps_altitude: values[13],
+        },
+        alt_data: {
+          pressure: values[15],
+          temperature: values[16],
+          AGL: values[17],
+        },
+        chute_state: {
+          pyro1_state: values[19] === 1 ? 1 : 0, // Placeholder logic
+          pyro2_state: values[20] === 2 ? 1 : 0,
+        },
+        battery_voltage: values[21],
+      };
+
+      setConnectionStatus((prev) => ({
+        ...prev,
+        flightComputer: { status: "Connected" },
+      }));
+
+      // Update telemetry from CSV-mapped structure
+      setTelemetry((prev) => ({
+        ...prev,
+        state: receivedData.state,
+        operationMode: receivedData.operation_mode,
+        latitude: receivedData.gps_data.latitude,
+        longitude: receivedData.gps_data.longitude,
+        altitude: receivedData.gps_data.gps_altitude,
+        pressure: receivedData.alt_data.pressure,
+        temperature: receivedData.alt_data.temperature,
+        pyroDrogue: receivedData.chute_state.pyro1_state,
+        pyroMain: receivedData.chute_state.pyro2_state,
+        batteryVoltage: receivedData.battery_voltage,
+      }));
+
+      // Optional: update charts from parsed CSV if chart logic supports it
+      const time = Date.now();
+      updateCharts(time, receivedData);
+
+    } catch (csvError) {
+      // Failed to parse as both JSON and CSV
+      setError("Error parsing message: Not valid JSON or CSV");
       setConnectionStatus((prev) => ({
         ...prev,
         flightComputer: {
@@ -292,6 +358,14 @@ function App() {
           status: "Data Error",
         },
       }));
+    }
+      // setConnectionStatus((prev) => ({
+      //   ...prev,
+      //   flightComputer: {
+      //     ...prev.flightComputer,
+      //     status: "Data Error",
+      //   },
+      // }));
     }
   };
 

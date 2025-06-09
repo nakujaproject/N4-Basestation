@@ -20,7 +20,7 @@ const Video = () => {
     useEffect(() => {
         animate();
 
-        // setStream(true); // Assuming the stream is always available from the server
+        setStream(true); // Assuming the stream is always available from the server
 
         return () => {
             setStream(false);
