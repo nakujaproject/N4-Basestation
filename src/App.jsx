@@ -7,6 +7,8 @@ import Chart from "./components/Chart";
 import Video from "./components/Video";
 import MQTT from "paho-mqtt";
 
+
+
 function App() {
   const [telemetry, setTelemetry] = useState({
     state: 0,
@@ -44,6 +46,8 @@ function App() {
   const ws_port = Number(import.meta.env.VITE_WS_PORT);
   const [mqttClient, setMqttClient] = useState(null);
 
+  
+  
   // Handle arming/disarming
   const handleArmRocket = () => {
     if (!mqttClient) {
@@ -72,9 +76,11 @@ function App() {
         action: newArmedState ? "Armed" : "Disarmed",
         status: "Sent",
         level: "INFO",
-        message: "",
+        message: `Rocket ${newArmedState ? "armed" : "disarmed"} successfully`,
         source: "Basestation",
       };
+
+     
 
       setArmingLogs((prev) => [logEntry, ...prev]);
 
@@ -84,18 +90,20 @@ function App() {
         operationMode: newArmedState,
       }));
       } catch (err) {
-      setError("Failed to send arming command");
 
       const logEntry = {
         timestamp: new Date(),
         action: newArmedState ? "Arm" : "Disarm",
         status: "Failed",
-        error: err.message,
         level: "ERROR",
+        message: `Command failed: ${err.message}`,
         source: "Basestation",
       };
 
       setArmingLogs((prev) => [logEntry, ...prev]);
+
+      setError("Failed to send arming command");
+
     }
   };
 
@@ -182,7 +190,7 @@ function App() {
         setConnectionStatus((prev) => ({
           ...prev,
           baseStation: {
-            status: "Connection Failed",
+            status: "Disconnected",
             lastConnectionAttempt: new Date(),
             connectionAttempts: prev.baseStation.connectionAttempts + 1,
           },
@@ -236,6 +244,84 @@ function App() {
     }
   };
 
+// using http server 
+useEffect(() => {
+  const fetchTelemetryData = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/data");
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      const jsonData = await response.json();
+
+      // Extract relevant telemetry data
+      const newTelemetry = {
+        state: jsonData.state,
+        operationMode: jsonData.operation_mode,
+        latitude: jsonData.gps_data.latitude,
+        longitude: jsonData.gps_data.longitude,
+        altitude: jsonData.gps_data.gps_altitude,
+        pressure: jsonData.alt_data.pressure,
+        temperature: jsonData.alt_data.temperature,
+        pyroDrogue: jsonData.chute_state.pyro1_state,
+        pyroMain: jsonData.chute_state.pyro2_state,
+        batteryVoltage: jsonData.battery_voltage,
+      };
+
+      // Update state
+      setTelemetry((prev) => ({
+        ...prev,
+        ...newTelemetry,
+      }));
+
+      // Update charts
+      updateCharts(Date.now(), jsonData);
+
+       // Update flight computer connection status
+       setConnectionStatus((prev) => ({
+        ...prev,
+        flightComputer: {
+          status: "Connected",
+        },
+      }));
+
+      setConnectionStatus((prev) => ({
+        ...prev,
+        baseStation: {
+          status: "Connected",
+        },
+      }));
+
+    } catch (error) {
+      console.error("Error fetching telemetry data:", error);
+      const errorLog = {
+        timestamp: new Date(),
+        level: "ERROR",
+        message: "Error parsing message: " + error.message,
+        source: "Dashboard",
+      };
+
+      setArmingLogs((prevLogs) => [errorLog, ...prevLogs]);
+
+      setError("Failed to fetch telemetry data");
+
+      setConnectionStatus((prev) => ({
+        ...prev,
+        flightComputer: {
+          ...prev.flightComputer,
+          status: "Data Error",
+        },
+      }));
+    }
+  };
+
+  // Fetch telemetry data every 1/100th of asecond
+  const interval = setInterval(fetchTelemetryData, 100);
+
+  return () => clearInterval(interval);
+}, []);
+
+
   // Message arrived handler
   let onMessageArrived = (message) => {
     const payload = message.payloadString;
@@ -252,8 +338,9 @@ function App() {
           source: receivedData.source || "Flight Computer",
         };
 
+        
         // Add log to flight computer logs
-        setArmingLogs((prevLogs) => [newLog, ...prevLogs].slice(0, 100)); // Limit to 100 logs
+        setArmingLogs((prevLogs) => [newLog, ...prevLogs].slice(0, 10)); // Limit to 10 logs
         return;
       }
 
