@@ -39,7 +39,7 @@ const Chart = forwardRef((props, ref) => {
       ylabel = "Altitude(m)";
       dataset = [
         {
-          label: "Altitude",
+          label: "GPS Alt",
           backgroundColor: "rgba(54, 162, 235, 0.5)",
           borderColor: "rgb(54, 162, 235)",
           cubicInterpolationMode: "monotone",
@@ -52,15 +52,29 @@ const Chart = forwardRef((props, ref) => {
           cubicInterpolationMode: "monotone",
           data: [],
         },
+        {
+          label: "Kalman Alt",
+          backgroundColor: "rgba(75, 192, 192, 0.5)",
+          borderColor: "rgb(75, 192, 192)",
+          cubicInterpolationMode: "monotone",
+          data: [],
+        },
       ];
       break;
     case "velocity":
       ylabel = "Velocity (m/s)";
       dataset = [
         {
-          label: "Velocity",
+          label: "Barometric Vel",
           backgroundColor: "rgba(255, 99, 132, 0.5)",
-          borderColor: "rgb(1, 99, 132)",
+          borderColor: "rgb(255, 99, 132)",
+          cubicInterpolationMode: "monotone",
+          data: [],
+        },
+        {
+          label: "Kalman Vel",
+          backgroundColor: "rgba(153, 102, 255, 0.5)",
+          borderColor: "rgb(153, 102, 255)",
           cubicInterpolationMode: "monotone",
           data: [],
         },
