@@ -1,13 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import logo from "../assets/nakuja_logo.png";
 
 
 const Video = () => {
     const [stream, setStream] = useState(false);
+    const spinnerRef = useRef(null);
 
     const animate = () => {
-        gsap.to('.animate', {
+        const el = spinnerRef.current;
+        if (!el) return;
+        gsap.to(el, {
             rotation: '+=360',
             scale: 0.8,
             repeat: -1,
@@ -18,7 +21,7 @@ const Video = () => {
     };
 
     useEffect(() => {
-        animate();
+    animate();
 
         setStream(true); // Assuming the stream is always available from the server
 
@@ -41,7 +44,7 @@ const Video = () => {
 
             ) :
             (
-                <div className='animate'>
+                <div ref={spinnerRef} className='animate'>
                     <img
                         alt="logo"
                         src={logo}

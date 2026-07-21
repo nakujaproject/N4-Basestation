@@ -1,0 +1,22 @@
+{
+  "options": {
+    "serveStaticMaps": true
+  },
+  "data": {
+    "kenya-osm": {  
+      "mbtiles": "osm-2020-02-10-v3.11_africa_kenya.mbtiles" 
+    }
+  },
+  "tiles": {
+    "kenya-osm": {
+      "source": "kenya-osm", 
+      "type": "vector",      
+      "format": "pbf"     
+    }
+  },
+  "routes": {
+    "/": {
+      "redirect": "/tiles/kenya-osm/13/4937/4121.pbf"
+    }
+  }
+}

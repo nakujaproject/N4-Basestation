@@ -2,16 +2,16 @@ import React, { useState, useEffect, useRef } from "react";
 import nakujaLogo from "../assets/nakujaLogo.png";
 
 import Button from "./Button";
+import OverridesDropdown from "./OverridesDropdown";
 import LogNotification from "./LogNotification";
 
 import {
-  createThrottledSetter,
   determineAntenna,
   getRocketStatusAndColor,
 } from "../utils/sidebarUtils";
 
 function Sidebar(props) {
-  const THROTTLEDELAY = 100;
+  // Remove throttling for immediate updates
   const statusRef = useRef();
 
   // State Variables
@@ -22,6 +22,8 @@ function Sidebar(props) {
   const [temperature, setTemperature] = useState(0);
   const [pyroDrogue, setPyroDrougue] = useState(0);
   const [pyroMain, setPyroMain] = useState(0);
+  const [rssi, setRssi] = useState(0);
+  // Remove local communicationMode state; use props.communicationMode directly
   const [isArmed, setIsArmed] = useState(false);
   const [rocketStatus, setRocketStatus] = useState("Pre-Flight");
   const [antenna, setAntenna] = useState("A-1");
@@ -29,75 +31,55 @@ function Sidebar(props) {
   const [host, setHost] = useState("");
   const [port, setPort] = useState("");
   const [showArmingLogs, setShowArmingLogs] = useState(false);
+  
+  // Command state tracking
+  const [currentCommMode, setCurrentCommMode] = useState("MQTT"); // Track current communication mode
+  const [autoFallbackEnabled, setAutoFallbackEnabled] = useState(false); // Track auto fallback state
+  const [lastPressedButton, setLastPressedButton] = useState(""); // Track last pressed button for feedback
+  const [drogueArmed, setDrogueArmed] = useState(false);
+  const [mainArmed, setMainArmed] = useState(false);
 
-  // Throttled Setters
-  const throttledSetState = createThrottledSetter(setState, THROTTLEDELAY);
-  const throttledSetOperationMode = createThrottledSetter(
-    setOperationMode,
-    THROTTLEDELAY
-  );
-  const throttledSetPressure = createThrottledSetter(
-    setPressure,
-    THROTTLEDELAY
-  );
-  const throttledSetTemperature = createThrottledSetter(
-    setTemperature,
-    THROTTLEDELAY
-  );
-  const throttledSetAltitude = createThrottledSetter(
-    setAltitude,
-    THROTTLEDELAY
-  );
-  const throttledSetPyroDrogue = createThrottledSetter(
-    setPyroDrougue,
-    THROTTLEDELAY
-  );
-  const throttledSetPyroMain = createThrottledSetter(
-    setPyroMain,
-    THROTTLEDELAY
-  );
-
-  // Effects
+  // Effects - using direct state setters for immediate updates
   useEffect(() => {
-    throttledSetOperationMode(props.operationMode);
+    setOperationMode(props.operationMode);
     props.operationMode ? setIsArmed(true) : setIsArmed(false);
-    return throttledSetOperationMode.cancel();
-  }, [props.operationMode, throttledSetOperationMode]);
+  }, [props.operationMode]);
 
   useEffect(() => {
-    throttledSetPressure(props.pressure);
-    return throttledSetPressure.cancel();
-  }, [props.pressure, throttledSetPressure]);
+    setPressure(props.pressure);
+  }, [props.pressure]);
 
   useEffect(() => {
-    throttledSetPyroMain(props.pyroMain);
-    return throttledSetPyroMain.cancel();
-  }, [props.pyroMain, throttledSetPyroMain]);
+    setPyroMain(props.pyroMain);
+  setMainArmed(!!props.pyroMain);
+  }, [props.pyroMain]);
 
   useEffect(() => {
-    throttledSetPyroDrogue(props.pyroDrogue);
-    return throttledSetPyroDrogue.cancel();
-  }, [props.pyroDrogue, throttledSetPyroDrogue]);
-
-
-  useEffect(() => {
-    throttledSetTemperature(props.temperature);
-    return throttledSetTemperature.cancel();
-  }, [props.temperature, throttledSetTemperature]);
+    setPyroDrougue(props.pyroDrogue);
+  setDrogueArmed(!!props.pyroDrogue);
+  }, [props.pyroDrogue]);
 
   useEffect(() => {
-    throttledSetAltitude(props.altitude);
-    setAntenna(determineAntenna(altitude));
-    return throttledSetAltitude.cancel();
-  }, [props.altitude, throttledSetAltitude]);
+    setTemperature(props.temperature);
+  }, [props.temperature]);
 
   useEffect(() => {
-    throttledSetState(props.state);
-    const { status, color } = getRocketStatusAndColor(state);
+    setAltitude(props.altitude);
+    setAntenna(determineAntenna(props.altitude));
+  }, [props.altitude]);
+
+  useEffect(() => {
+    setState(props.state);
+    const { status, color } = getRocketStatusAndColor(props.state);
     setRocketStatus(status);
     setTextColor(color);
-    return throttledSetState.cancel();
-  }, [props.state, throttledSetState]);
+  }, [props.state]);
+
+  useEffect(() => {
+    setRssi(props.rssi);
+  }, [props.rssi]);
+
+  // No local communicationMode state; always use props.communicationMode
 
   // Event Handlers
   const handleHostChange = (e) => setHost(e.target.value);
@@ -107,29 +89,79 @@ function Sidebar(props) {
     if (host && port) props.onConnect(host, port);
   };
 
+  // Command handler with visual feedback and toggling
+  const handleCommandClick = (command) => {
+    if (props.onSendCommand) {
+      props.onSendCommand(command.command);
+      
+      // Update internal state for visual feedback
+      setLastPressedButton(command.command);
+      
+      // Handle state changes for toggleable commands
+      switch(command.command) {
+        case "drogue_arm":
+          setDrogueArmed(true);
+          break;
+        case "drogue_disarm":
+          setDrogueArmed(false);
+          break;
+        case "main_arm":
+          setMainArmed(true);
+          break;
+        case "main_disarm":
+          setMainArmed(false);
+          break;
+        case "mqtt":
+          setCurrentCommMode("MQTT");
+          break;
+        case "beacon":
+          setCurrentCommMode("Beacon");
+          break;
+        case "xbee":
+          setCurrentCommMode("XBee");
+          break;
+        // case "dual":
+        //   setCurrentCommMode("Dual");
+        //   break;
+        case "auto_on":
+          setAutoFallbackEnabled(true);
+          break;
+        case "auto_off":
+          setAutoFallbackEnabled(false);
+          break;
+      }
+      
+      // Clear the "pressed" feedback after a short delay
+      setTimeout(() => {
+        setLastPressedButton("");
+      }, 1000);
+    }
+  };
+
   return (
     <aside className="sm:flex md:fixed md:block hidden box-border h-screen  md:w-1/4 mt-10 md:m-0">
       <div className="flex items-center h-full w-full overflow-auto max-h-screen flex-col p-2 border-r border-gray-400 text-base text-gray-800">
         <div className="space-y-4">
-          <div className="flex items-center justify-center">
-            <img
-              src={nakujaLogo}
-              alt="NAKUJA PROJECT Logo"
-              className="rounded-full w-10 h-10"
-            />
-            <h1 className="uppercase font-semibold px-2 text-base md:text-lg text-gray-700">
-              Nakuja - N4
-            </h1>
+                    <div className="flex items-left justify-left">
+                    <div className="flex flex-col items-center justify-center space-y-1">
+            {/* Logo with bold title */}
+            <div className="flex items-center space-x-2">
+              <img
+                src={nakujaLogo}
+                alt="NAKUJA PROJECT Logo"
+                className="rounded-full w-10 h-10"
+              />
+              <h1 className="uppercase font-bold text-lg md:text-xl text-gray-900">
+                Nakuja - N4
+              </h1>
+            </div>
+
+            {/* Subtitle below */}
+            <h2 className="text-sm md:text-base text-gray-600 text-center">
+              Rocket Configuration
+            </h2>
           </div>
-
-          <div className="border-b-2 border-gray-800 " />
-
-          <h2 className="text-md font-semibold text-center md:text-base text-wrap">
-            ROCKET CONFIGURATION
-          </h2>
-
-          <div className="border-b-2 border-gray-800 " />
-
+          </div>
           {/* Arming Section with Button */}
           <div className="min-h-16 w-full p-2 rounded-2xl flex flex-col items-center justify-center font-semibold transition duration-300 ease-in-out border-2 border-gray-800 relative">
             <div className="text-sm uppercase -mt-6  bg-white px-1 z-10 h-1/3">
@@ -146,7 +178,7 @@ function Sidebar(props) {
               <div>
                 <Button
                   onClick={props.onArmRocket}
-                  className={`px-2 py-1 rounded-full shadow-md border-2 border-box font-bold w-16 h-8 text-xs uppercase ${
+                  className={`px-2 py-1 rounded-md shadow-md border-2 border-box font-bold w-16 h-8 text-xs uppercase ${
                     !isArmed
                       ? "bg-rose-600 hover:bg-rose-700 text-gray-100"
                       : "bg-emerald-500 hover:bg-emerald-600 text-gray-100"
@@ -158,35 +190,71 @@ function Sidebar(props) {
             </div>
           </div>
 
-          <div className="min-h-14 h-14 w-full p-2 rounded-2xl flex flex-col items-center justify-center font-semibold transition duration-300 ease-in-out border-2 border-gray-800 relative">
-            <div className="text-sm uppercase -mt-9 bg-white px-1 z-10 relative h-1/2">
-              Flight State
-            </div>
-            <div
-              ref={statusRef}
-              className={`text-base pt-1 h-1/2 uppercase ${textColor}`}
-            >
-              {rocketStatus}
-            </div>
-          </div>
+          {/* Overrides dropdown under Arm container (Drogue/Main buttons inside) */}
+          <OverridesDropdown
+            drogueArmed={drogueArmed}
+            mainArmed={mainArmed}
+            isConnected={props.isConnected}
+            onSendCommand={(cmd) => handleCommandClick({ command: cmd.toLowerCase() })}
+          />
 
-          <div className="min-h-14 h-14 w-full p-2 rounded-2xl flex flex-col items-center justify-center font-semibold transition duration-300 ease-in-out border-2 border-gray-800 relative">
-            <div className="text-sm uppercase -mt-9 bg-white px-1 z-10 relative h-1/2">
-              Antenna
-            </div>
-            <div className="text-base pt-1 h-1/2 uppercase">{antenna}</div>
-          </div>
+          <div className="flex space-x-4 w-full">
+  {/* Flight State Card */}
+  <div className="flex-1 p-3 rounded-2xl border-2 border-gray-800 bg-white shadow-sm flex flex-col items-center justify-center transition-transform duration-300 hover:scale-105">
+    <div className="text-sm uppercase bg-white px-2 -mt-5 font-semibold">
+      Flight State
+    </div>
+    <div
+      ref={statusRef}
+      className={`text-lg pt-1 font-bold uppercase ${textColor}`}
+    >
+      {rocketStatus}
+    </div>
+  </div>
 
-          <div className="min-h-14 h-14 w-full p-2 rounded-2xl flex flex-col items-center justify-center font-semibold transition duration-300 ease-in-out border-2 border-gray-700 relative ">
-            <div className="text-base -mt-5 bg-white px-1 z-10 relative h-full">
-              RSSI
-            </div>
-            <div className="  text-base grid grid-cols-1 items-center justify-center -mt-2 h-full w-full text-gray-800">
-              <div className="px-1 grid grid-rows-3 items-center justify-center h-full w-full">
-                <div className=" h-1/3 "> 60 dBm</div>
-              </div>
-            </div>
-          </div>
+  {/* Antenna Card */}
+  <div className="flex-1 p-3 rounded-2xl border-2 border-gray-800 bg-white shadow-sm flex flex-col items-center justify-center transition-transform duration-300 hover:scale-105">
+    <div className="text-sm uppercase bg-white px-2 -mt-5 font-semibold">
+      Antenna
+    </div>
+    <div className="text-lg pt-1 font-bold uppercase">{antenna}</div>
+  </div>
+</div>
+
+
+         <div className="flex space-x-4 w-full">
+  {/* RSSI Card */}
+  <div className="flex-1 p-3 rounded-2xl border-2 border-gray-700 bg-white shadow-sm flex flex-col items-center justify-center transition-transform duration-300 hover:scale-105">
+    <div className="text-sm uppercase bg-white px-2 -mt-5 font-semibold">
+      RSSI
+    </div>
+    <div className="text-lg font-bold text-gray-800 pt-1">
+      {rssi} dBm
+    </div>
+  </div>
+
+  {/* COMM MODE Card */}
+  <div className="flex-1 p-3 rounded-2xl border-2 border-gray-700 bg-white shadow-sm flex flex-col items-center justify-center transition-transform duration-300 hover:scale-105">
+    <div className="text-sm uppercase bg-white px-2 -mt-5 font-semibold">
+      COMM MODE
+    </div>
+    <div
+      className={`text-lg font-bold pt-1 ${
+        props.communicationMode === "Beacon"
+          ? "text-orange-600"
+          : props.communicationMode === "MQTT"
+          ? "text-green-600"
+          : props.communicationMode === "XBee"
+          ? "text-purple-600"
+          : props.communicationMode?.includes("+")
+          ? "text-blue-600"
+          : "text-gray-500"
+      }`}
+    >
+      {props.communicationMode}
+    </div>
+  </div>
+</div>
 
           {/* Chute status section */}
           <div className="min-h-16 w-full p-2 rounded-2xl flex flex-col items-center justify-center font-semibold transition duration-300 ease-in-out border-2 border-gray-800 relative">
@@ -232,78 +300,193 @@ function Sidebar(props) {
           {/* Logs Section */}
           <LogNotification logs={props.armingLogs} />
 
-
-          <div>
-            <div className="border-b-2"></div>
-
-            <div className="flex flex-row item-center justify-center py-2 border-b-2">
-              <h1 className="font-semibold  text-center pr-1">MQTT SETUP</h1>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 16 16"
-                fill="currentColor"
-                className="size-4 mt-1"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M13.78 10.47a.75.75 0 0 1 0 1.06l-2.25 2.25a.75.75 0 0 1-1.06 0l-2.25-2.25a.75.75 0 1 1 1.06-1.06l.97.97V5.75a.75.75 0 0 1 1.5 0v5.69l.97-.97a.75.75 0 0 1 1.06 0ZM2.22 5.53a.75.75 0 0 1 0-1.06l2.25-2.25a.75.75 0 0 1 1.06 0l2.25 2.25a.75.75 0 0 1-1.06 1.06l-.97-.97v5.69a.75.75 0 0 1-1.5 0V4.56l-.97.97a.75.75 0 0 1-1.06 0Z"
-                  clipRule="evenodd"
-                />
-              </svg>
+          {/* Communication Mode Control - Following existing theme with toggle feedback */}
+          <div className="min-h-16 w-full p-2 rounded-2xl flex flex-col items-center justify-center font-semibold transition duration-300 ease-in-out border-2 border-gray-800 relative">
+            <div className="text-sm uppercase -mt-6 bg-white px-1 z-10 h-1/3">
+              Communication Mode
             </div>
-
-            <form onSubmit={handleConnect} className="grid grid-cols-2 pt-1">
-              <div className="mr-2">
-                <label htmlFor="host" className="font-bold ">
-                  Host
-                </label>
-                <input
-                  className="w-5/6 md:w-full bg-gray-300 block h-10 border-0  px-3 py-1  outline-none transition-all duration-200 ease-linear focus:placeholder:opacity-100 dark:text-white "
-                  type="text"
-                  id="host"
-                  value={host}
-                  onChange={handleHostChange}
-                  placeholder="192.168.x.x"
-                />
-              </div>
-              <div>
-                <label htmlFor="port" className="font-bold">
-                  Port
-                </label>
-                <input
-                  className="w-5/6 md:w-full bg-gray-300 block h-10 border-0 px-3 py-1  outline-none transition-all duration-200 ease-linear focus:placeholder:opacity-100 dark:text-white "
-                  type="text"
-                  id="port"
-                  value={port}
-                  onChange={handlePortChange}
-                  placeholder="xxxx"
-                />
-              </div>
+            <div className="text-base h-2/3 w-full pt-1 uppercase items-center text-center grid grid-cols-3 gap-2">
               <Button
-                type="submit"
-                className="flex flex-row h-10 items-center font-semibold  justify-center rounded-lg p-2 text-white hover:bg-blue-900 bg-blue-800 w-auto my-2 transition shadow-sm shadow-gray-700 hover:shadow-gray-800 uppercase"
+                onClick={() => handleCommandClick({command: "mqtt"})}
+                className={`px-1 py-1 rounded-full shadow-md border-2 border-box font-bold text-xs uppercase transition-all duration-200 ${
+                  currentCommMode === "MQTT" 
+                    ? "bg-green-600 hover:bg-green-700 text-white border-green-800" 
+                    : lastPressedButton === "mqtt"
+                    ? "bg-green-300 text-green-800 border-green-500"
+                    : "bg-gray-400 hover:bg-gray-500 text-white border-gray-600"
+                }`}
+                disabled={!props.isConnected}
               >
-                Connect
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 16 16"
-                  fill="currentColor"
-                  className="size-4"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M8.914 6.025a.75.75 0 0 1 1.06 0 3.5 3.5 0 0 1 0 4.95l-2 2a3.5 3.5 0 0 1-5.396-4.402.75.75 0 0 1 1.251.827 2 2 0 0 0 3.085 2.514l2-2a2 2 0 0 0 0-2.828.75.75 0 0 1 0-1.06Z"
-                    clipRule="evenodd"
-                  />
-                  <path
-                    fillRule="evenodd"
-                    d="M7.086 9.975a.75.75 0 0 1-1.06 0 3.5 3.5 0 0 1 0-4.95l2-2a3.5 3.5 0 0 1 5.396 4.402.75.75 0 0 1-1.251-.827 2 2 0 0 0-3.085-2.514l-2 2a2 2 0 0 0 0 2.828.75.75 0 0 1 0 1.06Z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                MQTT
               </Button>
-            </form>
+              <Button
+                onClick={() => handleCommandClick({command: "beacon"})}
+                className={`px-1 py-1 rounded-full shadow-md border-2 border-box font-bold text-xs uppercase transition-all duration-200 ${
+                  currentCommMode === "Beacon" 
+                    ? "bg-orange-600 hover:bg-orange-700 text-white border-orange-800" 
+                    : lastPressedButton === "beacon"
+                    ? "bg-orange-300 text-orange-800 border-orange-500"
+                    : "bg-gray-400 hover:bg-gray-500 text-white border-gray-600"
+                }`}
+                disabled={!props.isConnected}
+              >
+                BEACON
+              </Button>
+              <Button
+                onClick={() => handleCommandClick({command: "xbee"})}
+                className={`px-1 py-1 rounded-full shadow-md border-2 border-box font-bold text-xs uppercase transition-all duration-200 ${
+                  currentCommMode === "XBee" 
+                    ? "bg-purple-600 hover:bg-purple-700 text-white border-purple-800" 
+                    : lastPressedButton === "xbee"
+                    ? "bg-purple-300 text-purple-800 border-purple-500"
+                    : "bg-gray-400 hover:bg-gray-500 text-white border-gray-600"
+                }`}
+                disabled={!props.isConnected}
+              >
+                XBEE
+              </Button>
+            </div>
           </div>
+
+          {/* Auto Fallback Control with toggle feedback */}
+          <div className="min-h-14 w-full p-2 rounded-2xl flex flex-col items-center justify-center font-semibold transition duration-300 ease-in-out border-2 border-gray-800 relative">
+            <div className="text-sm uppercase -mt-6 bg-white px-1 z-10 h-1/3">
+              Auto Fallback
+            </div>
+            <div className="text-base h-2/3 w-full pt-1 uppercase items-center text-center grid grid-cols-2 gap-2">
+              <Button
+                onClick={() => handleCommandClick({command: "auto_on"})}
+                className={`px-2 py-1 rounded-full shadow-md border-2 border-box font-bold text-xs uppercase transition-all duration-200 ${
+                  autoFallbackEnabled 
+                    ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-800" 
+                    : lastPressedButton === "auto_on"
+                    ? "bg-emerald-300 text-emerald-800 border-emerald-500"
+                    : "bg-gray-400 hover:bg-gray-500 text-white border-gray-600"
+                }`}
+                disabled={!props.isConnected}
+              >
+                ON
+              </Button>
+              <Button
+                onClick={() => handleCommandClick({command: "auto_off"})}
+                className={`px-2 py-1 rounded-full shadow-md border-2 border-box font-bold text-xs uppercase transition-all duration-200 ${
+                  !autoFallbackEnabled 
+                    ? "bg-red-600 hover:bg-red-700 text-white border-red-800" 
+                    : lastPressedButton === "auto_off"
+                    ? "bg-red-300 text-red-800 border-red-500"
+                    : "bg-gray-400 hover:bg-gray-500 text-white border-gray-600"
+                }`}
+                disabled={!props.isConnected}
+              >
+                OFF
+              </Button>
+            </div>
+          </div>
+
+          {/* System Commands with press feedback */}
+          <div className="min-h-16 w-full p-2 rounded-2xl flex flex-col items-center justify-center font-semibold transition duration-300 ease-in-out border-2 border-gray-800 relative">
+            <div className="text-sm uppercase -mt-6 bg-white px-1 z-10 h-1/3">
+              System Control
+            </div>
+            <div className="text-base h-2/3 w-full pt-1 uppercase items-center text-center grid grid-cols-2 gap-2">
+              <Button
+                onClick={() => handleCommandClick({command: "reset"})}
+                className={`px-2 py-1 rounded-full shadow-md border-2 border-box font-bold text-xs uppercase transition-all duration-200 ${
+                  lastPressedButton === "reset"
+                    ? "bg-red-300 text-red-800 border-red-500 transform scale-95"
+                    : "bg-red-600 hover:bg-red-700 text-white border-red-800 hover:transform hover:scale-105"
+                }`}
+                disabled={!props.isConnected}
+              >
+                RESET
+              </Button>
+              <Button
+                onClick={() => handleCommandClick({command: "status"})}
+                className={`px-2 py-1 rounded-full shadow-md border-2 border-box font-bold text-xs uppercase transition-all duration-200 ${
+                  lastPressedButton === "status"
+                    ? "bg-blue-300 text-blue-800 border-blue-500 transform scale-95"
+                    : "bg-blue-600 hover:bg-blue-700 text-white border-blue-800 hover:transform hover:scale-105"
+                }`}
+                disabled={!props.isConnected}
+              >
+                STATUS
+              </Button>
+            </div>
+          </div>
+
+
+         <div className="bg-white rounded-md shadow-sm border border-gray-200">
+  <div className="flex flex-row items-center justify-center py-2 px-3 bg-gray-50 border-b border-gray-200">
+    <h1 className="font-semibold text-gray-700 text-center pr-2 text-sm">MQTT CONNECTION</h1>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 16 16"
+      fill="currentColor"
+      className="size-4 text-gray-500"
+    >
+      <path
+        fillRule="evenodd"
+        d="M13.78 10.47a.75.75 0 0 1 0 1.06l-2.25 2.25a.75.75 0 0 1-1.06 0l-2.25-2.25a.75.75 0 1 1 1.06-1.06l.97.97V5.75a.75.75 0 0 1 1.5 0v5.69l.97-.97a.75.75 0 0 1 1.06 0ZM2.22 5.53a.75.75 0 0 1 0-1.06l2.25-2.25a.75.75 0 0 1 1.06 0l2.25 2.25a.75.75 0 0 1-1.06 1.06l-.97-.97v5.69a.75.75 0 0 1-1.5 0V4.56l-.97.97a.75.75 0 0 1-1.06 0Z"
+        clipRule="evenodd"
+      />
+    </svg>
+  </div>
+
+  <form onSubmit={handleConnect} className="p-3 space-y-3">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="space-y-1">
+        <label htmlFor="host" className="font-medium text-gray-600 text-xs uppercase tracking-wide">
+          Host Address
+        </label>
+        <input
+          className="w-full bg-gray-50 border border-gray-300 rounded px-3 py-2 text-sm text-gray-800 outline-none transition-all duration-150 focus:ring-1 focus:ring-blue-400 focus:border-blue-400 focus:bg-white"
+          type="text"
+          id="host"
+          value={host}
+          onChange={handleHostChange}
+          placeholder="192.168.x.x"
+        />
+      </div>
+      <div className="space-y-1">
+        <label htmlFor="port" className="font-medium text-gray-600 text-xs uppercase tracking-wide">
+          Port
+        </label>
+        <input
+          className="w-full bg-gray-50 border border-gray-300 rounded px-3 py-2 text-sm text-gray-800 outline-none transition-all duration-150 focus:ring-1 focus:ring-blue-400 focus:border-blue-400 focus:bg-white"
+          type="text"
+          id="port"
+          value={port}
+          onChange={handlePortChange}
+          placeholder="xxxx"
+        />
+      </div>
+    </div>
+    
+    <Button
+      type="submit"
+      className="flex flex-row h-9 items-center font-medium justify-center rounded px-4 text-white hover:bg-blue-600 bg-blue-500 w-full md:w-auto transition-all duration-150 shadow-sm hover:shadow focus:ring-1 focus:ring-blue-400 focus:ring-offset-1 text-sm uppercase tracking-wide"
+    >
+      Establish Connection
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 16 16"
+        fill="currentColor"
+        className="size-3.5 ml-1.5"
+      >
+        <path
+          fillRule="evenodd"
+          d="M8.914 6.025a.75.75 0 0 1 1.06 0 3.5 3.5 0 0 1 0 4.95l-2 2a3.5 3.5 0 0 1-5.396-4.402.75.75 0 0 1 1.251.827 2 2 0 0 0 3.085 2.514l2-2a2 2 0 0 0 0-2.828.75.75 0 0 1 0-1.06Z"
+          clipRule="evenodd"
+        />
+        <path
+          fillRule="evenodd"
+          d="M7.086 9.975a.75.75 0 0 1-1.06 0 3.5 3.5 0 0 1 0-4.95l2-2a3.5 3.5 0 0 1 5.396 4.402.75.75 0 0 1-1.251-.827 2 2 0 0 0-3.085-2.514l-2 2a2 2 0 0 0 0 2.828.75.75 0 0 1 0 1.06Z"
+          clipRule="evenodd"
+        />
+      </svg>
+    </Button>
+  </form>
+</div>
         </div>
       </div>
     </aside>

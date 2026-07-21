@@ -22,7 +22,7 @@ function Header(props) {
 
   return (
     <header className="md:flex">
-      <div className="fixed bg-gray-200 box-border w-full md:w-4/5 px-4 z-30 top-0 shadow-md h-10 md:h-16">
+      <div className="fixed whitespace-nowrap box-border w-full md:w-4/5 px-4 z-30 top-0 shadow-md h-10 md:h-16">
         <div className="w-full h-full text-base mx-auto max-w-8xl grid grid-flow-row grid-cols-3 items-center justify-around">
           <div className="flex flex-col text-center items-center">
             <div className="hidden md:flex flex-row items-center text-gray-500">

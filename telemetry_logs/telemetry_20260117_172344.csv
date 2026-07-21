@@ -1,0 +1,1 @@
+timestamp,iso_timestamp,record_number,operation_mode,state,ax,ay,az,pitch,roll,gx,gy,gz,latitude,longitude,gps_altitude,gps_time,pressure,temperature,agl_altitude,velocity,pyro1_state,pyro2_state,battery_voltage,wifi_rssi,kalman_altitude,kalman_vertical_velocity,communication_mode,raw_data
